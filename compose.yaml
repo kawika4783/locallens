@@ -1,0 +1,20 @@
+services:
+  locallens:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${LOCALLENS_IMAGE:-locallens:latest}
+    container_name: locallens
+    restart: unless-stopped
+    ports:
+      - "${LOCALLENS_PORT:-8787}:8787"
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      HOME: /tmp
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /app/downloads:rw,noexec,nosuid,size=${LOCALLENS_DOWNLOAD_TMPFS_SIZE:-4g},mode=0700,uid=1000,gid=1000
+      - /tmp:rw,nosuid,size=256m,mode=0700,uid=1000,gid=1000

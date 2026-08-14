@@ -1,0 +1,12 @@
+.git
+.github
+.agents
+.codex
+node_modules
+dist
+downloads
+design-concept.png
+*.log
+.env*
+README.md
+compose*.yaml

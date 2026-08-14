@@ -1,0 +1,18 @@
+services:
+  locallens:
+    image: ${LOCALLENS_IMAGE:?Set LOCALLENS_IMAGE to ghcr.io/OWNER/REPOSITORY:latest}
+    container_name: locallens
+    restart: unless-stopped
+    pull_policy: always
+    ports:
+      - "${LOCALLENS_PORT:-8787}:8787"
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      HOME: /tmp
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /app/downloads:rw,noexec,nosuid,size=${LOCALLENS_DOWNLOAD_TMPFS_SIZE:-4g},mode=0700,uid=1000,gid=1000
+      - /tmp:rw,nosuid,size=256m,mode=0700,uid=1000,gid=1000
