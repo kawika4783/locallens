@@ -75,6 +75,8 @@ For Portainer, create a Git repository stack, point it at your repository, selec
 LOCALLENS_IMAGE=ghcr.io/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY:latest
 ```
 
+The GitHub-hosted Compose file does not publish a VPS host port. It exposes port `8787` only to Docker so Traefik or another reverse proxy can control the public domain, TLS certificate, and routing. Attach the service to the proxy network using your Traefik management layer and target container port `8787`.
+
 When the image is private, first authenticate on the VPS with a GitHub personal access token that has `read:packages` permission:
 
 ```bash
