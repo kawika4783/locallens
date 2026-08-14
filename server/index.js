@@ -1,5 +1,7 @@
 import crypto from 'node:crypto'
+import fsSync from 'node:fs'
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
@@ -11,11 +13,32 @@ const port = Number(process.env.PORT) || 8787
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const downloadDir = path.join(root, 'downloads')
 const allowedHosts = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'])
+const generatedCookiesPath = path.join(os.tmpdir(), 'locallens-youtube-cookies.txt')
+
+function resolveCookiesFile() {
+  if (process.env.YOUTUBE_COOKIES_FILE) return process.env.YOUTUBE_COOKIES_FILE
+  if (!process.env.YOUTUBE_COOKIES_BASE64) return null
+
+  try {
+    const contents = Buffer.from(process.env.YOUTUBE_COOKIES_BASE64, 'base64').toString('utf8')
+    if (!/^# (?:Netscape )?HTTP Cookie File/m.test(contents)) {
+      throw new Error('Cookie data is not in Netscape format.')
+    }
+    fsSync.writeFileSync(generatedCookiesPath, contents.replace(/\r\n/g, '\n'), { mode: 0o600 })
+    return generatedCookiesPath
+  } catch (error) {
+    console.error(`Could not load YOUTUBE_COOKIES_BASE64: ${error.message}`)
+    return null
+  }
+}
+
+const cookiesFile = resolveCookiesFile()
 const ytDlpDefaults = {
   jsRuntimes: 'node',
   noPlaylist: true,
   noWarnings: true,
-  ...(process.env.YOUTUBE_COOKIES_FILE ? { cookies: process.env.YOUTUBE_COOKIES_FILE } : {}),
+  ...(cookiesFile ? { cookies: cookiesFile } : {}),
+  ...(process.env.YOUTUBE_PROXY ? { proxy: process.env.YOUTUBE_PROXY } : {}),
 }
 const youtubeInfoAttempts = [
   null,
@@ -78,7 +101,7 @@ async function extractVideoInfo(url) {
 function errorMessage(error) {
   const text = String(error?.stderr || error?.message || '')
   if (/private video/i.test(text)) return 'That video is private.'
-  if (isYouTubeBotChallenge(error)) return 'YouTube temporarily blocked this request. Wait a moment and try again.'
+  if (isYouTubeBotChallenge(error)) return 'YouTube blocked this server IP. Add YouTube cookies or a permitted proxy to the container.'
   if (/sign in|age-restricted|age restricted/i.test(text)) return 'That video requires sign-in and cannot be prepared here.'
   if (/unavailable|not available/i.test(text)) return 'That video is unavailable.'
   return 'This video could not be prepared. Check the link and try again.'

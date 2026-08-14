@@ -81,9 +81,29 @@ When the image is private, first authenticate on the VPS with a GitHub personal 
 echo "$GHCR_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 ```
 
-## Persistent YouTube bot checks
+## Persistent YouTube bot checks on a VPS
 
 LocalLens automatically retries transient YouTube bot challenges with multiple player clients. Some datacenter/VPS IP addresses may still be persistently challenged. In that case, the server can use an owner-supplied Netscape-format cookies file through `YOUTUBE_COOKIES_FILE`.
+
+The easiest option for a Portainer or URL-based Compose stack is to export only your `youtube.com` cookies in Netscape format, Base64-encode the file, and set the resulting value as the stack environment variable `YOUTUBE_COOKIES_BASE64`.
+
+Linux:
+
+```bash
+base64 -w 0 youtube-cookies.txt
+```
+
+PowerShell:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("youtube-cookies.txt"))
+```
+
+Then recreate the container. LocalLens decodes the value into its private `/tmp` filesystem at startup; the cookies are not added to the image or repository. Environment variables can still be inspected by Docker administrators, so use a dedicated/throwaway YouTube account and restrict access to the VPS. YouTube may temporarily or permanently restrict accounts used by download tools.
+
+If you operate a permitted outbound proxy, set `YOUTUBE_PROXY` to its URL (for example `http://user:password@proxy-host:3128`). A residential/home IP is generally less likely to receive the datacenter-IP challenge.
+
+For Docker secrets or a direct file mount, `YOUTUBE_COOKIES_FILE` remains supported:
 
 Do not expose the cookies file through the web app or commit it to Git. Mount it read-only into the container and set the environment variable to its container path, for example:
 

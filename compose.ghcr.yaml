@@ -10,6 +10,8 @@ services:
       NODE_ENV: production
       PORT: 8787
       HOME: /tmp
+      YOUTUBE_COOKIES_BASE64: ${YOUTUBE_COOKIES_BASE64:-}
+      YOUTUBE_PROXY: ${YOUTUBE_PROXY:-}
     read_only: true
     security_opt:
       - no-new-privileges:true
