@@ -6,8 +6,7 @@ services:
     image: ${LOCALLENS_IMAGE:-locallens:latest}
     container_name: locallens
     restart: unless-stopped
-    ports:
-      - "${LOCALLENS_PORT:-8787}:8787"
+   
     environment:
       NODE_ENV: production
       PORT: 8787
