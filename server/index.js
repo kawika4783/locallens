@@ -16,6 +16,7 @@ const ytDlpDefaults = {
   noPlaylist: true,
   noWarnings: true,
 }
+const youtubeFallbackArgs = 'youtube:player_client=tv,mweb;formats=incomplete'
 
 function validateYouTubeUrl(value) {
   try {
@@ -31,10 +32,34 @@ function safeFilename(value) {
   return value.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120) || 'video'
 }
 
+function isYouTubeBotChallenge(error) {
+  const text = String(error?.stderr || error?.message || '')
+  return /sign in to confirm.*not a bot|confirm you(?:'|’)re not a bot/i.test(text)
+}
+
+async function extractVideoInfo(url) {
+  const options = {
+    ...ytDlpDefaults,
+    dumpSingleJson: true,
+    skipDownload: true,
+  }
+
+  try {
+    return { info: await youtubedl(url, options), extractorArgs: null }
+  } catch (error) {
+    if (!isYouTubeBotChallenge(error)) throw error
+    return {
+      info: await youtubedl(url, { ...options, extractorArgs: youtubeFallbackArgs }),
+      extractorArgs: youtubeFallbackArgs,
+    }
+  }
+}
+
 function errorMessage(error) {
   const text = String(error?.stderr || error?.message || '')
   if (/private video/i.test(text)) return 'That video is private.'
-  if (/sign in|age-restricted/i.test(text)) return 'That video requires sign-in and cannot be prepared here.'
+  if (isYouTubeBotChallenge(error)) return 'YouTube temporarily blocked this request. Wait a moment and try again.'
+  if (/sign in|age-restricted|age restricted/i.test(text)) return 'That video requires sign-in and cannot be prepared here.'
   if (/unavailable|not available/i.test(text)) return 'That video is unavailable.'
   return 'This video could not be prepared. Check the link and try again.'
 }
@@ -48,11 +73,7 @@ app.get('/api/info', async (req, res) => {
   if (!url) return res.status(400).json({ error: 'Enter a valid HTTPS YouTube URL.' })
 
   try {
-    const info = await youtubedl(url, {
-      ...ytDlpDefaults,
-      dumpSingleJson: true,
-      skipDownload: true,
-    })
+    const { info } = await extractVideoInfo(url)
     return res.json({
       title: info.title || 'Untitled video',
       uploader: info.uploader || info.channel || 'Unknown channel',
@@ -75,14 +96,11 @@ app.get('/api/download', async (req, res) => {
   const outputTemplate = path.join(downloadDir, `${id}.%(ext)s`)
 
   try {
-    const info = await youtubedl(url, {
-      ...ytDlpDefaults,
-      dumpSingleJson: true,
-      skipDownload: true,
-    })
+    const { info, extractorArgs } = await extractVideoInfo(url)
     const filename = `${safeFilename(info.title || 'video')}.mp4`
     await youtubedl(url, {
       ...ytDlpDefaults,
+      ...(extractorArgs ? { extractorArgs } : {}),
       output: outputTemplate,
       format: `bestvideo[ext=mp4][height<=${quality}]+bestaudio[ext=m4a]/best[ext=mp4][height<=${quality}]/best[height<=${quality}]`,
       mergeOutputFormat: 'mp4',
