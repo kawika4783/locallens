@@ -3,3 +3,4 @@ dist/
 downloads/
 .env
 npm-debug.log*
+youtube-cookies*.txt

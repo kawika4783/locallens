@@ -8,5 +8,6 @@ downloads
 design-concept.png
 *.log
 .env*
+youtube-cookies*.txt
 README.md
 compose*.yaml

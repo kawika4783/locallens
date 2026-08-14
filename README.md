@@ -80,3 +80,18 @@ When the image is private, first authenticate on the VPS with a GitHub personal 
 ```bash
 echo "$GHCR_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 ```
+
+## Persistent YouTube bot checks
+
+LocalLens automatically retries transient YouTube bot challenges with multiple player clients. Some datacenter/VPS IP addresses may still be persistently challenged. In that case, the server can use an owner-supplied Netscape-format cookies file through `YOUTUBE_COOKIES_FILE`.
+
+Do not expose the cookies file through the web app or commit it to Git. Mount it read-only into the container and set the environment variable to its container path, for example:
+
+```yaml
+services:
+  locallens:
+    environment:
+      YOUTUBE_COOKIES_FILE: /run/secrets/youtube-cookies.txt
+    volumes:
+      - ./youtube-cookies.txt:/run/secrets/youtube-cookies.txt:ro
+```

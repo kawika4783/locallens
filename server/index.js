@@ -15,14 +15,25 @@ const ytDlpDefaults = {
   jsRuntimes: 'node',
   noPlaylist: true,
   noWarnings: true,
+  ...(process.env.YOUTUBE_COOKIES_FILE ? { cookies: process.env.YOUTUBE_COOKIES_FILE } : {}),
 }
-const youtubeFallbackArgs = 'youtube:player_client=tv,mweb;formats=incomplete'
+const youtubeInfoAttempts = [
+  null,
+  'youtube:player_client=tv,mweb;formats=incomplete',
+  'youtube:player_client=web_embedded,android_vr;formats=incomplete',
+]
+const youtubeRetryDelays = [0, 800, 1600]
 
 function validateYouTubeUrl(value) {
   try {
     const parsed = new URL(value)
     if (parsed.protocol !== 'https:' || !allowedHosts.has(parsed.hostname)) return null
-    return parsed.toString()
+    const pathParts = parsed.pathname.split('/').filter(Boolean)
+    const videoId = parsed.hostname === 'youtu.be'
+      ? pathParts[0]
+      : parsed.searchParams.get('v') || (['shorts', 'live', 'embed'].includes(pathParts[0]) ? pathParts[1] : null)
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId || '')) return null
+    return `https://www.youtube.com/watch?v=${videoId}`
   } catch {
     return null
   }
@@ -38,21 +49,30 @@ function isYouTubeBotChallenge(error) {
 }
 
 async function extractVideoInfo(url) {
-  const options = {
+  const baseOptions = {
     ...ytDlpDefaults,
     dumpSingleJson: true,
     skipDownload: true,
   }
+  let lastError
 
-  try {
-    return { info: await youtubedl(url, options), extractorArgs: null }
-  } catch (error) {
-    if (!isYouTubeBotChallenge(error)) throw error
-    return {
-      info: await youtubedl(url, { ...options, extractorArgs: youtubeFallbackArgs }),
-      extractorArgs: youtubeFallbackArgs,
+  for (let index = 0; index < youtubeInfoAttempts.length; index += 1) {
+    const extractorArgs = youtubeInfoAttempts[index]
+    if (youtubeRetryDelays[index]) {
+      await new Promise((resolve) => setTimeout(resolve, youtubeRetryDelays[index]))
+    }
+    try {
+      return {
+        info: await youtubedl(url, { ...baseOptions, ...(extractorArgs ? { extractorArgs } : {}) }),
+        extractorArgs,
+      }
+    } catch (error) {
+      if (!isYouTubeBotChallenge(error)) throw error
+      lastError = error
     }
   }
+
+  throw lastError
 }
 
 function errorMessage(error) {
