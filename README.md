@@ -49,6 +49,10 @@ docker compose ps
 docker compose logs -f locallens
 ```
 
+### Hostinger VPS Docker Manager
+
+For the Hostinger server at `srv1831469.hstgr.cloud`, use the dedicated `compose.hostinger.yaml` file. It follows the same deployment pattern as the working services on that VPS: a hardcoded public image, Docker-internal port exposure, and Traefik labels for automatic HTTPS routing at `https://locallens.srv1831469.hstgr.cloud`.
+
 ## Publish to GitHub Container Registry
 
 The workflow at `.github/workflows/docker-publish.yml` publishes Linux AMD64 and ARM64 images to:

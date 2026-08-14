@@ -1,0 +1,43 @@
+services:
+  locallens:
+    image: ghcr.io/kawika4783/locallens:latest
+    pull_policy: always
+    restart: unless-stopped
+    expose:
+      - "8787"
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      HOME: /tmp
+      YOUTUBE_COOKIES_BASE64: ${YOUTUBE_COOKIES_BASE64:-}
+      YOUTUBE_PROXY: ${YOUTUBE_PROXY:-}
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.locallens.rule: "Host(`locallens.srv1831469.hstgr.cloud`)"
+      traefik.http.routers.locallens.entrypoints: "websecure"
+      traefik.http.routers.locallens.tls: "true"
+      traefik.http.routers.locallens.tls.certresolver: "letsencrypt"
+      traefik.http.routers.locallens.service: "locallens"
+      traefik.http.routers.locallens.middlewares: "locallens-compress@docker"
+      traefik.http.services.locallens.loadbalancer.server.port: "8787"
+      traefik.http.services.locallens.loadbalancer.healthcheck.path: "/api/health"
+      traefik.http.services.locallens.loadbalancer.healthcheck.interval: "30s"
+      traefik.http.services.locallens.loadbalancer.healthcheck.timeout: "5s"
+      traefik.http.middlewares.locallens-compress.compress: "true"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /app/downloads:rw,noexec,nosuid,size=4g,mode=0700,uid=1000,gid=1000
+      - /tmp:rw,nosuid,size=256m,mode=0700,uid=1000,gid=1000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
