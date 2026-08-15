@@ -9,8 +9,12 @@ services:
       NODE_ENV: production
       PORT: 8787
       HOME: /tmp
+      YOUTUBE_POT_PROVIDER_URL: http://pot-provider:4416
       YOUTUBE_COOKIES_BASE64: ${YOUTUBE_COOKIES_BASE64:-}
       YOUTUBE_PROXY: ${YOUTUBE_PROXY:-}
+    depends_on:
+      pot-provider:
+        condition: service_started
     labels:
       traefik.enable: "true"
       traefik.http.routers.locallens.rule: "Host(`locallens.srv1831469.hstgr.cloud`)"
@@ -36,6 +40,21 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  pot-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:1.3.1
+    pull_policy: always
+    restart: unless-stopped
+    init: true
+    expose:
+      - "4416"
+    security_opt:
+      - no-new-privileges:true
     logging:
       driver: json-file
       options:

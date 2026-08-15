@@ -14,6 +14,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const downloadDir = path.join(root, 'downloads')
 const allowedHosts = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'])
 const generatedCookiesPath = path.join(os.tmpdir(), 'locallens-youtube-cookies.txt')
+const potProviderUrl = process.env.YOUTUBE_POT_PROVIDER_URL?.trim() || null
 
 function resolveCookiesFile() {
   if (process.env.YOUTUBE_COOKIES_FILE) return process.env.YOUTUBE_COOKIES_FILE
@@ -40,12 +41,27 @@ const ytDlpDefaults = {
   ...(cookiesFile ? { cookies: cookiesFile } : {}),
   ...(process.env.YOUTUBE_PROXY ? { proxy: process.env.YOUTUBE_PROXY } : {}),
 }
-const youtubeInfoAttempts = [
-  null,
-  'youtube:player_client=tv,mweb;formats=incomplete',
-  'youtube:player_client=web_embedded,android_vr;formats=incomplete',
-]
+const youtubeInfoAttempts = potProviderUrl
+  ? [
+      'youtube:player_client=mweb;formats=incomplete;fetch_pot=always',
+      null,
+      'youtube:player_client=web_embedded,android_vr;formats=incomplete',
+    ]
+  : [
+      null,
+      'youtube:player_client=tv,mweb;formats=incomplete',
+      'youtube:player_client=web_embedded,android_vr;formats=incomplete',
+    ]
 const youtubeRetryDelays = [0, 800, 1600]
+
+function buildExtractorArgs(youtubeArgs) {
+  const values = [
+    youtubeArgs,
+    potProviderUrl ? `youtubepot-bgutilhttp:base_url=${potProviderUrl}` : null,
+  ].filter(Boolean)
+  if (values.length === 0) return null
+  return values.length === 1 ? values[0] : values
+}
 
 function validateYouTubeUrl(value) {
   try {
@@ -80,7 +96,7 @@ async function extractVideoInfo(url) {
   let lastError
 
   for (let index = 0; index < youtubeInfoAttempts.length; index += 1) {
-    const extractorArgs = youtubeInfoAttempts[index]
+    const extractorArgs = buildExtractorArgs(youtubeInfoAttempts[index])
     if (youtubeRetryDelays[index]) {
       await new Promise((resolve) => setTimeout(resolve, youtubeRetryDelays[index]))
     }

@@ -53,6 +53,8 @@ docker compose logs -f locallens
 
 For the Hostinger server at `srv1831469.hstgr.cloud`, use the dedicated `compose.hostinger.yaml` file. It follows the same deployment pattern as the working services on that VPS: a hardcoded public image, Docker-internal port exposure, and Traefik labels for automatic HTTPS routing at `https://locallens.srv1831469.hstgr.cloud`.
 
+The Hostinger stack also runs the official `bgutil-ytdlp-pot-provider` integration as an internal-only sidecar. It automatically supplies proof-of-origin tokens to yt-dlp and may clear YouTube bot checks on flagged VPS addresses without account cookies. YouTube can still require cookies or a different permitted outbound IP in some cases; PO tokens are not a guaranteed bypass for every IP restriction.
+
 ## Publish to GitHub Container Registry
 
 The workflow at `.github/workflows/docker-publish.yml` publishes Linux AMD64 and ARM64 images to:
